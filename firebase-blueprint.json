@@ -1,0 +1,98 @@
+{
+  "entities": {
+    "Reminder": {
+      "title": "Reminder",
+      "description": "A scheduled reminder task.",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string" },
+        "text": { "type": "string" },
+        "time": { "type": "string" },
+        "completed": { "type": "boolean" },
+        "createdAt": { "type": "number" }
+      },
+      "required": ["id", "text", "completed", "createdAt"]
+    },
+    "Alarm": {
+      "title": "Alarm",
+      "description": "An alarm clock configuration.",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string" },
+        "time": { "type": "string" },
+        "label": { "type": "string" },
+        "active": { "type": "boolean" },
+        "ringDays": {
+          "type": "array",
+          "description": "Days of the week the alarm should ring"
+        }
+      },
+      "required": ["id", "time", "label", "active", "ringDays"]
+    },
+    "HabitLog": {
+      "title": "HabitLog",
+      "description": "A telemetry log of a user habit or system command.",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string" },
+        "action": { "type": "string" },
+        "timestamp": { "type": "number" },
+        "category": { "type": "string", "enum": ["alarm", "reminder", "cmd", "chat"] },
+        "meta": { "type": "string" }
+      },
+      "required": ["id", "action", "timestamp", "category"]
+    },
+    "PlannerBucket": {
+      "title": "PlannerBucket",
+      "description": "A column bucket on the Microsoft Planner-like board.",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string" },
+        "name": { "type": "string" }
+      },
+      "required": ["id", "name"]
+    },
+    "PlannerTask": {
+      "title": "PlannerTask",
+      "description": "A task card inside a planner bucket.",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string" },
+        "title": { "type": "string" },
+        "description": { "type": "string" },
+        "bucketId": { "type": "string" },
+        "priority": { "type": "string", "enum": ["low", "medium", "high", "critical"] },
+        "progress": { "type": "number" },
+        "startDate": { "type": "string" },
+        "dueDate": { "type": "string" },
+        "checklist": {
+          "type": "array",
+          "description": "List of checklist items under this task"
+        }
+      },
+      "required": ["id", "title", "description", "bucketId", "priority", "progress", "checklist"]
+    }
+  },
+  "firestore": {
+    "/users/{userId}/reminders/{reminderId}": {
+      "schema": "Reminder",
+      "description": "User specific reminder items."
+    },
+    "/users/{userId}/alarms/{alarmId}": {
+      "schema": "Alarm",
+      "description": "User specific alarm settings."
+    },
+    "/users/{userId}/habitLogs/{logId}": {
+      "schema": "HabitLog",
+      "description": "User action and diagnostic telemetry logs."
+    },
+    "/users/{userId}/plannerBuckets/{bucketId}": {
+      "schema": "PlannerBucket",
+      "description": "User custom planning board columns."
+    },
+    "/users/{userId}/plannerTasks/{taskId}": {
+      "schema": "PlannerTask",
+      "description": "User tasks corresponding to their board buckets."
+    }
+  }
+}

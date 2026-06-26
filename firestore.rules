@@ -1,0 +1,160 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+    // 1. Global safety net: default deny catch-all - Moved to the end.
+
+    // Reuseable global helpers
+    function isSignedIn() {
+      return request.auth != null;
+    }
+
+    function isVerified() {
+      return request.auth.token.email_verified == true;
+    }
+
+    function isValidId(id) {
+      return id is string && id.size() <= 128 && id.matches('^[a-zA-Z0-9_\\-]+$');
+    }
+
+    // Type and structure validation helpers
+    function isValidReminder(data) {
+      return data.keys().hasAll(['id', 'text', 'completed', 'createdAt'])
+        && data.keys().size() >= 4 && data.keys().size() <= 5
+        && data.id is string && data.id.size() <= 128
+        && data.text is string && data.text.size() <= 1000
+        && data.completed is bool
+        && data.createdAt is int
+        && (!data.keys().hasAny(['time']) || (data.time is string && data.time.size() <= 20));
+    }
+
+    function isValidAlarm(data) {
+      return data.keys().hasAll(['id', 'time', 'label', 'active', 'ringDays'])
+        && data.keys().size() == 5
+        && data.id is string && data.id.size() <= 128
+        && data.time is string && data.time.size() <= 20
+        && data.label is string && data.label.size() <= 200
+        && data.active is bool
+        && data.ringDays is list
+        && data.ringDays.size() <= 7;
+    }
+
+    // User email from runtime for admin checks if needed
+    function isOwner(userId) {
+      return isSignedIn() && userId == request.auth.uid;
+    }
+
+    function isValidHabitLog(data) {
+      return data.keys().hasAll(['id', 'action', 'timestamp', 'category'])
+        && data.keys().size() >= 4 && data.keys().size() <= 5
+        && data.id is string && data.id.size() <= 128
+        && data.action is string && data.action.size() <= 1000
+        && data.timestamp is int
+        && data.category is string && data.category in ['alarm', 'reminder', 'cmd', 'chat']
+        && (!data.keys().hasAny(['meta']) || (data.meta is string && data.meta.size() <= 500));
+    }
+
+    function isValidPlannerBucket(data) {
+      return data.keys().hasAll(['id', 'name'])
+        && data.keys().size() == 2
+        && data.id is string && data.id.size() <= 128
+        && data.name is string && data.name.size() <= 200;
+    }
+
+    function isValidPlannerTask(data) {
+      return data.keys().hasAll(['id', 'title', 'description', 'bucketId', 'priority', 'progress', 'checklist'])
+        && data.keys().size() >= 7 && data.keys().size() <= 9
+        && data.id is string && data.id.size() <= 128
+        && data.title is string && data.title.size() <= 200
+        && data.description is string && data.description.size() <= 2000
+        && data.bucketId is string && data.bucketId.size() <= 128
+        && data.priority is string && data.priority in ['low', 'medium', 'high', 'critical']
+        && (data.progress is int || data.progress is float) && data.progress >= 0 && data.progress <= 100
+        && data.checklist is list
+        && data.checklist.size() <= 100
+        && (!data.keys().hasAny(['startDate']) || (data.startDate is string && data.startDate.size() <= 50))
+        && (!data.keys().hasAny(['dueDate']) || (data.dueDate is string && data.dueDate.size() <= 50));
+    }
+
+    // Users parent collection match
+    match /users/{userId} {
+      allow read: if isSignedIn();
+      allow write: if isSignedIn() && (userId == request.auth.uid || request.auth.token.email == '3647475@gmail.com' || request.auth.token.email == 'admin@astgas.kz');
+
+      // Subcollection constraints matching user identity
+      match /reminders/{reminderId} {
+        allow read: if isOwner(userId);
+        allow create: if isOwner(userId) && isValidId(reminderId) && isValidReminder(request.resource.data);
+        allow update: if isOwner(userId) && isValidReminder(request.resource.data) && request.resource.data.id == resource.data.id;
+        allow delete: if isOwner(userId);
+      }
+
+      match /alarms/{alarmId} {
+        allow read: if isOwner(userId);
+        allow create: if isOwner(userId) && isValidId(alarmId) && isValidAlarm(request.resource.data);
+        allow update: if isOwner(userId) && isValidAlarm(request.resource.data) && request.resource.data.id == resource.data.id;
+        allow delete: if isOwner(userId);
+      }
+
+      match /habitLogs/{logId} {
+        allow read: if isOwner(userId);
+        allow create: if isOwner(userId) && isValidId(logId) && isValidHabitLog(request.resource.data);
+        allow update: if isOwner(userId) && isValidHabitLog(request.resource.data) && request.resource.data.id == resource.data.id;
+        allow delete: if isOwner(userId);
+      }
+
+      match /plannerBuckets/{bucketId} {
+        allow read: if isOwner(userId);
+        allow create: if isOwner(userId) && isValidId(bucketId) && isValidPlannerBucket(request.resource.data);
+        allow update: if isOwner(userId) && isValidPlannerBucket(request.resource.data) && request.resource.data.id == resource.data.id;
+        allow delete: if isOwner(userId);
+      }
+
+      match /plannerTasks/{taskId} {
+        allow read: if isOwner(userId);
+        allow create: if isOwner(userId) && isValidId(taskId) && isValidPlannerTask(request.resource.data);
+        allow update: if isOwner(userId) && isValidPlannerTask(request.resource.data) && request.resource.data.id == resource.data.id;
+        allow delete: if isOwner(userId);
+      }
+    }
+
+    match /employees/{employeeId} {
+      allow read: if isSignedIn();
+      allow write: if isSignedIn();
+    }
+
+    match /login_logs/{logId} {
+      allow read: if isSignedIn() && (request.auth.token.email == '3647475@gmail.com' || request.auth.token.email == 'admin@astgas.kz' || resource.data.email == request.auth.token.email);
+      allow create: if isSignedIn();
+    }
+
+    match /departments/{deptId} {
+      allow read: if isSignedIn();
+      allow write: if isSignedIn();
+    }
+
+    match /schedules/{scheduleId} {
+      allow read: if isSignedIn();
+      allow write: if isSignedIn();
+    }
+
+    match /documents/{docId} {
+      allow read: if isSignedIn();
+      allow write: if isSignedIn();
+    }
+
+    match /notifications/{notifId} {
+      allow read: if isSignedIn();
+      allow write: if isSignedIn();
+    }
+
+    match /system_logs/{logId} {
+      allow read: if isSignedIn() && (request.auth.token.email == '3647475@gmail.com' || request.auth.token.email == 'admin@astgas.kz');
+      allow create: if isSignedIn();
+    }
+
+    match /{document=**} {
+      allow read, write: if false;
+    }
+
+  }
+}

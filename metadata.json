@@ -1,0 +1,6 @@
+{
+  "name": "Jarvis OS",
+  "description": "Modern enterprise employee management platform for QazaqGaz featuring Firestore databases, login audit history, scheduling calendars, secure cloud document vault, and role-based permissions.",
+  "requestFramePermissions": ["microphone"],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}

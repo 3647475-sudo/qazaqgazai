@@ -1,0 +1,53 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>My Google AI Studio App</title>
+    <script>
+      // Monkey-patch console warning/error to completely filter and silence benign Vite WebSocket retry noise
+      const _warn = console.warn;
+      const _error = console.error;
+
+      console.warn = function(...args) {
+        const msg = args.map(arg => String(arg)).join(' ').toLowerCase();
+        if (msg.includes('websocket') || msg.includes('vite') || msg.includes('ws:') || msg.includes('opened.')) {
+          return; // Suppressed silently
+        }
+        _warn.apply(console, args);
+      };
+
+      console.error = function(...args) {
+        const msg = args.map(arg => String(arg)).join(' ').toLowerCase();
+        if (msg.includes('websocket') || msg.includes('vite') || msg.includes('ws:') || msg.includes('opened.')) {
+          return; // Suppressed silently
+        }
+        _error.apply(console, args);
+      };
+
+      // Suppress any remaining ambient unhandled rejections or error events
+      window.addEventListener('unhandledrejection', function(event) {
+        if (event.reason) {
+          const msg = String(event.reason.message || event.reason).toLowerCase();
+          if (msg.includes('websocket') || msg.includes('vite') || msg.includes('ws:') || msg.includes('opened.')) {
+            event.preventDefault();
+            event.stopPropagation();
+          }
+        }
+      }, true);
+
+      window.addEventListener('error', function(event) {
+        const msg = String(event.message || event.error || '').toLowerCase();
+        if (msg.includes('websocket') || msg.includes('vite') || msg.includes('ws:') || msg.includes('opened.')) {
+          event.preventDefault();
+          event.stopPropagation();
+        }
+      }, true);
+    </script>
+  </head>
+  <body>
+    <div id="root"></div>
+    <script type="module" src="/src/main.tsx"></script>
+  </body>
+</html>
+
